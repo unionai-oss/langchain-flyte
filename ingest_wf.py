@@ -15,8 +15,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 BUF_SIZE = 65536  # let's read docs in 64kb chunks!
 
-
-image = ImageSpec(registry="ghcr.io/unionai-oss", packages=["langchain"])
+image = ImageSpec(registry="ghcr.io/unionai-oss", packages=["langchain", "sentence_transformers", "faiss-cpu"], apt_packages=["wget"])
 
 
 def hash_flyte_file(f: FlyteFile) -> str:
@@ -91,3 +90,7 @@ def ingest(docs_home: str = "langchain.readthedocs.io/en/latest/") -> FAISS:
     splitter = functools.partial(split_doc_create_embeddings, chunk_size=1000, chunk_overlap=200)
     vectorstores = map_task(splitter)(raw_document=documents)
     return merge_embeddings(vectorstores=vectorstores)
+
+
+if __name__ == '__main__':
+    ingest()
