@@ -6,7 +6,7 @@ from flytekit.types.file import FlyteFile
 from typing import List, Annotated
 import hashlib
 import os
-
+from flytekit import ImageSpec
 from langchain import FAISS
 from langchain.document_loaders import ReadTheDocsLoader
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -14,6 +14,9 @@ from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 BUF_SIZE = 65536  # let's read docs in 64kb chunks!
+
+
+image = ImageSpec(registry="ghcr.io/unionai-oss", packages=["langchain"])
 
 
 def hash_flyte_file(f: FlyteFile) -> str:
@@ -35,7 +38,7 @@ def hash_document(d: Document) -> str:
     return md5.hexdigest()
 
 
-@task(cache_version="1", cache=True)
+@task(cache_version="1", cache=True, container_image=image)
 def download_documents(docs_home: str) -> List[Annotated[FlyteFile, HashMethod[hash_flyte_file]]]:
     """Load documents."""
     subprocess.check_call(f"wget -r -A.html -P rtdocs {docs_home}")
@@ -43,7 +46,7 @@ def download_documents(docs_home: str) -> List[Annotated[FlyteFile, HashMethod[h
 
 
 # TODO This should not be cached, as the source has to be loaded multiple times, but for testing purposes, we are caching it.
-@task(cache_version="1", cache=True)
+@task(cache_version="1", cache=True, container_image=image)
 def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMethod[hash_document]]]:
     """
     We could download the documents to a special folder using
@@ -53,7 +56,7 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
     return ReadTheDocsLoader("langchain.readthedocs.io/en/latest/").load()
 
 
-@task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="1Gi"))
+@task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="1Gi"), container_image=image)
 def split_doc_create_embeddings(raw_document: Document, chunk_size: int, chunk_overlap: int) -> FAISS:
     """
     Split documents into chunks.
@@ -70,7 +73,7 @@ def split_doc_create_embeddings(raw_document: Document, chunk_size: int, chunk_o
     return vectorstore
 
 
-@task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"))
+@task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"), container_image=image)
 def merge_embeddings(vectorstores: List[FAISS]) -> FAISS:
     """Merge embeddings.
     TODO: We should convert FAISS stores to be FlyteFiles, so that they can be lazily loaded.
