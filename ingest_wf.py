@@ -53,8 +53,8 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
     We could download the documents to a special folder using
     f"wget -r -A.html -P rtdocs {docs_home}" and then load them from there.
     """
-    subprocess.check_call(f"wget -r -A.html {docs_home}")
-    return ReadTheDocsLoader("langchain.readthedocs.io/en/latest/").load()
+    subprocess.check_call(f"wget -r -A.html --content-on-error -q {docs_home}")
+    return ReadTheDocsLoader(f"{docs_home}").load()
 
 
 @task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"), container_image=image)
