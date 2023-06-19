@@ -1,12 +1,10 @@
 import functools
+import hashlib
+from typing import List, Annotated
 
+from flytekit import ImageSpec
 from flytekit import task, workflow, HashMethod, Resources, map_task
 from flytekit.tools import subprocess
-from flytekit.types.file import FlyteFile
-from typing import List, Annotated
-import hashlib
-import os
-from flytekit import ImageSpec
 from langchain import FAISS
 from langchain.document_loaders import ReadTheDocsLoader
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -16,6 +14,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # BUF_SIZE = 65536  # let's read docs in 64kb chunks!
 
 image = ImageSpec(registry="ghcr.io/unionai-oss",
+                  name="langchain-flyte",
                   packages=["langchain", "sentence_transformers", "faiss-cpu", "beautifulsoup4"],
                   apt_packages=["wget"])
 
@@ -78,6 +77,11 @@ def split_doc_create_embeddings(raw_document: Document, chunk_size: int, chunk_o
 def merge_embeddings(vectorstores: List[FAISS]) -> FAISS:
     """Merge embeddings.
     TODO: We should convert FAISS stores to be FlyteFiles, so that they can be lazily loaded.
+    Rather
+    change the function signature to
+    def merge_embeddings(vectorstores: Iterator[FAISS]) -> FAISS:
+      ...
+    To support this we need to write a new typetransformer for Iterator.
     """
     # Ideally have a method like this
     aggregated_store = vectorstores[0]
