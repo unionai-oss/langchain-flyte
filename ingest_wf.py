@@ -13,24 +13,23 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-
-BUF_SIZE = 65536  # let's read docs in 64kb chunks!
+# BUF_SIZE = 65536  # let's read docs in 64kb chunks!
 
 image = ImageSpec(registry="ghcr.io/unionai-oss",
                   packages=["langchain", "sentence_transformers", "faiss-cpu", "beautifulsoup4"],
                   apt_packages=["wget"])
 
 
-def hash_flyte_file(f: FlyteFile) -> str:
-    """Hash a FlyteFile."""
-    md5 = hashlib.md5()
-    with f.open("rb") as fp:
-        while True:
-            data = f.read(BUF_SIZE)
-            if not data:
-                break
-            md5.update(data)
-    return md5.hexdigest()
+# def hash_flyte_file(f: FlyteFile) -> str:
+#     """Hash a FlyteFile."""
+#     md5 = hashlib.md5()
+#     with f.open("rb") as fp:
+#         while True:
+#             data = f.read(BUF_SIZE)
+#             if not data:
+#                 break
+#             md5.update(data)
+#     return md5.hexdigest()
 
 
 def hash_document(d: Document) -> str:
@@ -40,11 +39,11 @@ def hash_document(d: Document) -> str:
     return md5.hexdigest()
 
 
-@task(cache_version="1", cache=True, container_image=image)
-def download_documents(docs_home: str) -> List[Annotated[FlyteFile, HashMethod[hash_flyte_file]]]:
-    """Load documents."""
-    subprocess.check_call(f"wget -r -A.html -P rtdocs {docs_home}")
-    return [FlyteFile(f"rtdocs/{f}") for f in os.listdir("rtdocs")]
+# @task(cache_version="1", cache=True, container_image=image)
+# def download_documents(docs_home: str) -> List[Annotated[FlyteFile, HashMethod[hash_flyte_file]]]:
+#     """Load documents."""
+#     subprocess.check_call(f"wget -r -A.html -P rtdocs {docs_home}")
+#     return [FlyteFile(f"rtdocs/{f}") for f in os.listdir("rtdocs")]
 
 
 # TODO This should not be cached, as the source has to be loaded multiple times, but for testing purposes, we are caching it.
