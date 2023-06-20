@@ -1,5 +1,7 @@
 import functools
 import hashlib
+import logging
+from subprocess import CalledProcessError
 from typing import List, Annotated
 
 from flytekit import ImageSpec
@@ -52,8 +54,19 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
     We could download the documents to a special folder using
     f"wget -r -A.html -P rtdocs {docs_home}" and then load them from there.
     """
-    subprocess.check_call(f"wget -r -A.html --content-on-error -q {docs_home}")
-    return ReadTheDocsLoader(f"{docs_home}").load()
+    prev_err = None
+    try:
+        subprocess.check_call(f"wget -r -A.html --content-on-error {docs_home}")
+    except CalledProcessError as e:
+        logging.warning("wget failed, but we will try to load the documents anyway.")
+        prev_err = e
+    docs = ReadTheDocsLoader(f"{docs_home}").load()
+    if len(docs) == 0:
+        if prev_err:
+            raise ValueError("No documents were loaded.") from prev_err
+        else:
+            raise ValueError("wget succeeded, but no documents were loaded.")
+    return docs
 
 
 @task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"), container_image=image)
