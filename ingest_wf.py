@@ -1,10 +1,10 @@
 import functools
-import hashlib
-from typing import List, Annotated
 
-from flytekit import ImageSpec
 from flytekit import task, workflow, HashMethod, Resources, map_task
 from flytekit.tools import subprocess
+from typing import List, Annotated
+import hashlib
+from flytekit import ImageSpec
 from langchain import FAISS
 from langchain.document_loaders import ReadTheDocsLoader
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -52,7 +52,7 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
     We could download the documents to a special folder using
     f"wget -r -A.html -P rtdocs {docs_home}" and then load them from there.
     """
-    subprocess.check_call(f"wget -r -A.html {docs_home}")
+    subprocess.check_call(f"wget --content-on-error -r -A.html {docs_home}")
     return ReadTheDocsLoader("langchain.readthedocs.io/en/latest/").load()
 
 
@@ -91,7 +91,7 @@ def merge_embeddings(vectorstores: List[FAISS]) -> FAISS:
 
 
 @workflow
-def ingest(docs_home: str = "langchain.readthedocs.io/en/latest/") -> FAISS:
+def ingest(docs_home: str = "docs.flyte.org/en/latest/") -> FAISS:
     documents = download_load_documents(docs_home=docs_home)
     splitter = functools.partial(split_doc_create_embeddings, chunk_size=1000, chunk_overlap=200)
     vectorstores = map_task(splitter)(raw_document=documents)
