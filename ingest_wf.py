@@ -57,7 +57,7 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
     prev_err = None
     try:
         subprocess.check_call(f"wget -r -A.html --content-on-error {docs_home}")
-    except CalledProcessError as e:
+    except Exception as e:
         logging.warning("wget failed, but we will try to load the documents anyway.")
         prev_err = e
     docs = ReadTheDocsLoader(f"{docs_home}").load()
