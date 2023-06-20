@@ -1,6 +1,7 @@
 import functools
 import hashlib
 import logging
+import typing
 from subprocess import CalledProcessError
 from typing import List, Annotated
 
@@ -70,24 +71,25 @@ def download_load_documents(docs_home: str) -> List[Annotated[Document, HashMeth
 
 
 @task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"), container_image=image)
-def split_doc_create_embeddings(raw_document: Document, chunk_size: int, chunk_overlap: int) -> FAISS:
+def split_doc_create_embeddings(raw_document: Document, chunk_size: int, chunk_overlap: int) -> typing.Optional[FAISS]:
     """
     Split documents into chunks.
     # TODO: we can also perform the "Embeddings" lookup independently here, using a Flyte Agent, which can allow independent retries and scaling.
-    # TODO: I am currently using pickle for FAISS, ideally we should use FlyteFile like interface so that we can lazily load them on the target.
     """
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
     documents = text_splitter.split_documents([raw_document])
+    if documents is None or len(documents) == 0:
+        return None
     embeddings = HuggingFaceEmbeddings()
     vectorstore = FAISS.from_documents(documents, embeddings)
     return vectorstore
 
 
 @task(cache_version="1", cache=True, requests=Resources(cpu="1", mem="8Gi"), container_image=image)
-def merge_embeddings(vectorstores: List[FAISS]) -> FAISS:
+def merge_embeddings(vectorstores: List[typing.Optional[FAISS]]) -> typing.Optional[FAISS]:
     """Merge embeddings.
     TODO: We should convert FAISS stores to be FlyteFiles, so that they can be lazily loaded.
     Rather
@@ -97,14 +99,20 @@ def merge_embeddings(vectorstores: List[FAISS]) -> FAISS:
     To support this we need to write a new typetransformer for Iterator.
     """
     # Ideally have a method like this
+    if len(vectorstores) == 0:
+        return None
     aggregated_store = vectorstores[0]
     for i in range(1, len(vectorstores)):
-        aggregated_store.merge_from(vectorstores[i])
+        if vectorstores[i] is not None:
+            if aggregated_store is None:
+                aggregated_store = vectorstores[i]
+            else:
+                aggregated_store.merge_from(vectorstores[i])
     return aggregated_store
 
 
 @workflow
-def ingest(docs_home: str = "langchain.readthedocs.io/en/latest/") -> FAISS:
+def ingest(docs_home: str = "langchain.readthedocs.io/en/latest/") -> typing.Optional[FAISS]:
     documents = download_load_documents(docs_home=docs_home)
     splitter = functools.partial(split_doc_create_embeddings, chunk_size=1000, chunk_overlap=200)
     vectorstores = map_task(splitter)(raw_document=documents)
