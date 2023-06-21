@@ -14,24 +14,13 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# BUF_SIZE = 65536  # let's read docs in 64kb chunks!
-
+new_flytekit = ["git+https://github.com/flyteorg/flytekit@be5b3fa3618fe3aaded817fbc4d7cc902c8fe031"]
+new_flytekit_apt_requires = ["git"]
 image = ImageSpec(registry="ghcr.io/unionai-oss",
                   name="langchain-flyte",
-                  packages=["langchain", "sentence_transformers", "faiss-cpu", "beautifulsoup4"],
-                  apt_packages=["wget"])
-
-
-# def hash_flyte_file(f: FlyteFile) -> str:
-#     """Hash a FlyteFile."""
-#     md5 = hashlib.md5()
-#     with f.open("rb") as fp:
-#         while True:
-#             data = f.read(BUF_SIZE)
-#             if not data:
-#                 break
-#             md5.update(data)
-#     return md5.hexdigest()
+                  packages=["langchain", "sentence_transformers", "faiss-cpu", "beautifulsoup4"] + new_flytekit,
+                  apt_packages=["wget"] + new_flytekit_apt_requires,
+)
 
 
 def hash_document(d: Document) -> str:
